@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1e2430">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>QR Aura — Modern QR Code Studio</title>
   <meta name="description" content="Generate high-resolution custom QR codes instantly. Download in PNG or JPG formats with custom colors, sizes, and frames.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -86,6 +90,8 @@
                 value="https://google.com"
                 autocomplete="off"
                 spellcheck="false"
+                inputmode="url"
+                enterkeyhint="go"
                 required
               />
               <button type="button" id="clearInputBtn" class="clear-btn" title="Clear input" aria-label="Clear input">
@@ -311,6 +317,27 @@
       </div>
     </section>
   </main>
+
+  <!-- Mobile Sticky Action Bar (Active on phones & tablets) -->
+  <nav class="mobile-action-bar" id="mobileActionBar" aria-label="Mobile quick actions">
+    <button type="button" id="mobileScrollBtn" class="mobile-bar-btn" aria-label="Jump between edit and preview">
+      <svg class="mobile-btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+      </svg>
+      <span id="mobileScrollBtnText">View QR</span>
+    </button>
+    <button type="button" id="mobileDownloadBtn" class="mobile-bar-btn mobile-bar-primary" aria-label="Download QR as PNG">
+      <svg class="mobile-btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <span>Save PNG</span>
+    </button>
+  </nav>
 
   <!-- Notification Toast -->
   <div id="toast" class="toast hidden">

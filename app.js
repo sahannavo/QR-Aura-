@@ -35,6 +35,11 @@
   const clearHistoryBtn = document.getElementById('clearHistoryBtn');
   const toast = document.getElementById('toast');
   const toastMessage = document.getElementById('toastMessage');
+  const qrContainer = document.getElementById('qrContainer');
+  const mobileActionBar = document.getElementById('mobileActionBar');
+  const mobileScrollBtn = document.getElementById('mobileScrollBtn');
+  const mobileScrollBtnText = document.getElementById('mobileScrollBtnText');
+  const mobileDownloadBtn = document.getElementById('mobileDownloadBtn');
 
   // Application State
   const STORAGE_KEY_HISTORY = 'qr_aura_history_v2';
@@ -212,13 +217,39 @@
     const textToShare = urlInput.value.trim() || 'https://google.com';
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: 'QR Code',
-          text: 'Scan this QR Code for: ' + textToShare,
-          url: textToShare.startsWith('http') ? textToShare : undefined
-        });
+        let shared = false;
+        // On mobile devices, share the actual generated QR image file if supported
+        if (navigator.canShare && qrCanvas.toBlob) {
+          try {
+            const blob = await new Promise(resolve => qrCanvas.toBlob(resolve, 'image/png'));
+            if (blob) {
+              const file = new File([blob], 'qrcode.png', { type: 'image/png' });
+              if (navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                  files: [file],
+                  title: 'QR Code',
+                  text: textToShare
+                });
+                shared = true;
+              }
+            }
+          } catch (blobErr) {
+            // Fallback to text sharing
+          }
+        }
+
+        if (!shared) {
+          await navigator.share({
+            title: 'QR Code',
+            text: 'Scan this QR Code for: ' + textToShare,
+            url: textToShare.startsWith('http') ? textToShare : undefined
+          });
+        }
       } catch (err) {
-        if (err.name !== 'AbortError') console.error(err);
+        if (err.name !== 'AbortError') {
+          console.error(err);
+          showToast('Could not share QR code');
+        }
       }
     } else if (navigator.clipboard) {
       await navigator.clipboard.writeText(textToShare);
@@ -313,6 +344,9 @@
         urlInput.value = item.text;
         generateQRCode(false);
         showToast('Restored QR Code');
+        if (window.innerWidth <= 860 && qrContainer) {
+          qrContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       });
 
       historyGrid.appendChild(card);
@@ -328,21 +362,31 @@
   /* -------------------------------------------------------------
      Theme Support
   ------------------------------------------------------------- */
+  function updateThemeMeta(isLight) {
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', isLight ? '#e0e5ec' : '#1e2430');
+    }
+  }
+
   function initTheme() {
     const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
     if (savedTheme === 'dark') {
       document.body.classList.remove('light-theme');
       themeIconSun.classList.remove('hidden');
       themeIconMoon.classList.add('hidden');
+      updateThemeMeta(false);
     } else {
       document.body.classList.add('light-theme');
       themeIconSun.classList.add('hidden');
       themeIconMoon.classList.remove('hidden');
+      updateThemeMeta(true);
     }
   }
 
   function toggleTheme() {
     const isLight = document.body.classList.toggle('light-theme');
+    updateThemeMeta(isLight);
     if (isLight) {
       localStorage.setItem(STORAGE_KEY_THEME, 'light');
       themeIconSun.classList.add('hidden');
@@ -387,6 +431,13 @@
       e.preventDefault();
       generateQRCode(true);
       showToast('QR Code generated!');
+
+      // On mobile devices, smoothly scroll to preview so user sees the result immediately
+      if (window.innerWidth <= 860 && qrContainer) {
+        setTimeout(() => {
+          qrContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+      }
     });
 
     // Reset button
@@ -433,6 +484,9 @@
       chip.addEventListener('click', () => {
         urlInput.value = chip.dataset.val;
         generateQRCode(true);
+        if (window.innerWidth <= 860 && qrContainer) {
+          qrContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       });
     });
 
@@ -450,10 +504,53 @@
     copyImageBtn.addEventListener('click', copyImageToClipboard);
     shareBtn.addEventListener('click', shareQRCode);
 
+    // Mobile Action Bar
+    if (mobileDownloadBtn) {
+      mobileDownloadBtn.addEventListener('click', exportAsPng);
+    }
+    if (mobileScrollBtn) {
+      mobileScrollBtn.addEventListener('click', handleMobileJump);
+    }
+    setupMobileJumpObserver();
+
     // Theme toggle
     themeToggleBtn.addEventListener('click', toggleTheme);
 
     // History clear
     clearHistoryBtn.addEventListener('click', clearHistory);
+  }
+
+  /* -------------------------------------------------------------
+     Mobile Jump & Scroll Synchronization
+  ------------------------------------------------------------- */
+  function handleMobileJump() {
+    if (!qrContainer) return;
+    const rect = qrContainer.getBoundingClientRect();
+    // If preview is in view, jump back up to edit form
+    const inView = rect.top >= 0 && rect.top <= window.innerHeight * 0.75;
+    if (inView) {
+      const panel = document.querySelector('.control-panel') || qrForm;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      qrContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function setupMobileJumpObserver() {
+    if (!qrContainer || !mobileScrollBtnText) return;
+
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            mobileScrollBtnText.textContent = 'Edit Options';
+          } else {
+            mobileScrollBtnText.textContent = 'View QR';
+          }
+        });
+      }, { threshold: 0.35 });
+
+      observer.observe(qrContainer);
+    }
   }
 })();
